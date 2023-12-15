@@ -1,1 +1,0 @@
-# aivle_bigproject
