@@ -22,5 +22,7 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("subject/", include("subject.urls")),
     path("supervisor/", include("supervisor.urls")),
-    # path("", HttpResponseRedirect("subject.urls"))
+    # path("", HttpResponseRedirect("subject.urls")),
+    path('accounts/', include('allauth.urls')),
 ]
+
