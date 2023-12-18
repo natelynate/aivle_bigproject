@@ -6,5 +6,5 @@ from django.utils import timezone  # 시간대가 적용된 현재 시각 획득
 def testpage(request):
     return render(request, 
                   'subject/testpage.html', 
-                  {'now': timezone.now().strftime('%Y-%m-%d %H:%m:%S')}
+                  {'now': timezone.now().strftime('%Y-%m-%d %H:%M:%S')}
                   )
