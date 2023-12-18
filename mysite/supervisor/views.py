@@ -6,6 +6,6 @@ def testpage(request):
     # print(timezone.now()) # 터미널에 출력되는 시간은 정상인데
     return render(request, 
                   'supervisor/testpage.html', 
-                  {'now': timezone.now().strftime('%Y-%m-%d %H:%m:%S')}  # 웹페이지 출력되는 시간이 35분 느린 오류는 뭐지???
+                  {'now': timezone.now().strftime('%Y-%m-%d %H:%M:%S')}  # 웹페이지 출력되는 시간이 35분 느린 오류는 뭐지???
                   )
 
