@@ -1,8 +1,8 @@
-"""Database settings"""
+"""This is a place for Database operation related functions"""
 import pymysql
 from settings.config import HOST, USER, PASSWORD, DATABASE
 
-def connect_to_database(HOST, USER, PASSWORD, DATABASE):
+def connect_to_database(HOST=HOST, USER=USER, PASSWORD=PASSWORD, DATABASE=DATABASE):
     connection = pymysql.connect(
         host = HOST,
         user = USER,
@@ -13,27 +13,29 @@ def connect_to_database(HOST, USER, PASSWORD, DATABASE):
 
 def insert(sql):
     """Execute an INSERT SQL statement passed as a parameter"""
-    connection = connect_to_database()
+    connection = connect_to_database(HOST=HOST, USER=USER, PASSWORD=PASSWORD, DATABASE=DATABASE)
     cursor = connection.cursor()
     cursor.execute(sql)
+    connection.commit()
     cursor.close()
     connection.close()
-    return 
+    return "inserted a new row"
 
 
 def delete(sql):
     """Execute a DELETE SQL statement passed as a parameter"""
-    connection = connect_to_database()
+    connection = connect_to_database(HOST=HOST, USER=USER, PASSWORD=PASSWORD, DATABASE=DATABASE)
     cursor = connection.cursor()
     cursor.execute(sql)
+    connection.commit()
     cursor.close()
     connection.close()
-    return
+    return "deleted a row"
 
 
-def load(sql):
+def read(sql):
     """Fetch a row as a result of the given sql statement"""
-    connection = connect_to_database()
+    connection = connect_to_database(HOST=HOST, USER=USER, PASSWORD=PASSWORD, DATABASE=DATABASE)
     cursor = connection.cursor()
     cursor.execute(sql)
     result = cursor.fetchall()
@@ -44,3 +46,12 @@ def load(sql):
     else:
         raise ValueError("No row exists in the DB that corresponds to the provided condition!")
 
+
+def update(sql):
+    """description text"""
+    connection = connect_to_database(HOST=HOST, USER=USER, PASSWORD=PASSWORD, DATABASE=DATABASE)
+    cursor = connection.cursor()
+    cursor.execute(sql)
+    connection.commit()
+    cursor.close()
+    connection.close()

@@ -5,8 +5,8 @@ import pymysql
 import base64
 from pathlib import Path
 from logic.db import * # import db setup functions
-from logic.process_img import * # import image processing functions
-from models.pupil_tracker import GazeTracking
+from logic.process import *
+
 
 app = Flask(__name__)
 
@@ -30,111 +30,102 @@ def upload_image():
 # Submitting webm video clip
 @app.route('/api/video_upload/test', methods=['POST'])
 def test():
-        return None
-
-@app.route('/api/process_video', methods=['POST'])
-def process_video():
-    # video_data = request.get_data()
-    video = request.files['video']
-    with tempfile.TemporaryDirectory() as td:
-        temp_filename = Path(td) / 'uploaded_video'
-        video.save(temp_filename)
-
-    vidCapObj = cv2.VideoCapture(str(temp_filename) + '.mp4')    
-    while True: 
-        ret, frame = vidCapObj.read()
-        print(frame)
-        if not ret:
-            break
-        cv2.imshow("Demo", frame)
-
-    vidCapObj.release()
-    cv2.destroyAllWindows()
-
-    # for frame in video_stream:
-    #     frames.append(frame)
-    # return {'msg':'Video processed successfully',
-    #         'frame':frames}
-    return {'data':None}
+    """Deprecated"""
+    return None
+        
 
 # Submitting video clip frames for eyetracking
-@app.route('/api/eyetrack', methods=['POST'])
-def eyetrack():
-    """input = 1) frames (24)
-                2) tasktype ('get_ref', 'perget_json()_AB')
-                3) project_id 
-                4) testtaker_id
-                5) image_id (if tasktype is 'perget_json()_AB') 
-                6) pixel_x (if tasktype is 'get_ref')
-                7) pixel_y (if tasktype is 'get_ref')
-                8) object_locations (if tasktype is 'perget_json()_AB')"""
-    try:
-        project_id = request.get_json()['project_id']
-        testtaker_id = request.get_json()['testtaker_id']
-    except:
-        return {'error_message':'unclear project_id and testtaker_id'}
-    
-    try:
-        gaze = GazeTracking()
-        PUPILS = []
-        FRAMES = request.get_json()['frames'] #base64 encoded frames
-        for frame_num, frame in enumerate(FRAMES):
-            img = decode_image(frame)
-            gaze.refresh(img)
-            if gaze.pupil_left_coords() and gaze.pupil_right_coords():
-                left_pupil, right_pupil = gaze.pupil_left_coords(), gaze.pupil_right_coords()
-                entry = [[int(left_pupil[0]), int(left_pupil[1])],
-                         [int(right_pupil[0]), int(right_pupil[1])],
-                         ]
-                PUPILS.append(entry)
-            else:
-                print(f"No pupil detected for frame {frame_num}")
-                PUPILS.append((None, None))
-    except:
-        return {'error_message':'unable to retreive the video file from flask backend.'}
-    
-    return {'result':PUPILS}
-
-    # Obtain np.array frames and corresponding pupil coordinates
-    if request.get_json()['tasktype'] == 'get_ref':
-        pixel_x = request.get_json()['pixel_x']
-        pixel_y = request.get_json()['pixel_y']
-
-        if check_ref(PUPILS):
-            avg_pupil_x, avg_pupil_y = get_avg_pupil(PUPILS) # Get the average pupil coordinates
-            ref = calculate_ref(pixel_x, pixel_y, avg_pupil_x, avg_pupil_y)
-            # save the ref point information in the DB
-            ### DB logging with testtaker_id, project_id
-            return {'result':True}
-        else:
-            return {'result':False}
+@app.route('/api/eyetrack/reference', methods=['POST'])
+def get_eyetrack_ref():
+    """ input = 
+        1) frames(binary encoded) (24)
+        2) project_id 
+        3) testtaker_id
+        4) pixel_x 
+        5) pixel_y 
+        6) location_tag (one of 'center', 'left', 'right', 'up', 'down')   
+    Description: Receives Json payload containing information listed above. Calculates the reference point and scale factors and saves
+                 the result at the DB table. Returns True if the above operations were performed successfully and returns False 
+                 to trigger another request. 
+    """ 
+    table_name = 'Test_taker_information'
+    if request.method == 'POST':
+        try:
+            frames = request.get_json()['frames'] #base64 encoded frames
+            test_id = request.get_json()['test_id']
+            test_taker_id = request.get_json()['test_taker_id']
+            pixel_x = request.get_json()['pixel_x']
+            pixel_y = request.get_json()['pixel_y']
+            loc_tag = request.get_json()['location_tag']
+        except:
+            return {'error_message':'unclear or incomplete payload information in the request json'}
         
-    elif request.get_json()['tasktype'] == 'perget_json()_AB':
-        # perget_json() A/B task
-        object_locs = request.get_json()['object_locations']
-        ref = None # Load ref point from DB by keying with test_taker_id and 
-        pixel_coords = transform_to_pixel(PUPILS, ref)
-        pixel_coords = interpolate_gazetrack(pixel_coords)
-        gazehits = deduce_object_of_interest(pixel_coords, object_locs)
-        return {'result':True, 'state_message':'model ran successfully'}
-
-        ### DB Logging
-        # pixel_coords
-        # gazehits
-    else:
-        return {'error_message':'unclear request type. Check if the tasktype value is one of "get_ref" or "perget_json()_AB".'}
+        pupil_movement = record_pupil_movements(frames)
+        
+        # If recording for center reference point, 
+        if loc_tag == 'center':
+            ref = pupil_movement[0]
+            delete(f"""DELETE FROM {table_name} WHERE test_id='{test_id}' AND test_taker_id='{test_taker_id}';""")
+            insert(f"""INSERT INTO {table_name} 
+                       VALUES ('{test_id}', '{test_taker_id}', {ref[0][0]}, {ref[0][1]}, {ref[1][0]}, {ref[1][1]}, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);""")
+            return {'sucess':f"True. {loc_tag}={ref}'s been saved to the database"}  
+        else:
+            # Load central reference point at the center
+            center_ref = read(f"""SELECT center_left_x, center_left_x, center_right_x, center_right_y
+                                  FROM {table_name}
+                                  WHERE test_id = '{test_id}' AND test_taker_id = '{test_taker_id}';
+                              """)[0]
+            center_ref = ((center_ref[0], center_ref[1]), (center_ref[2], center_ref[3]))
+            
+            new_ref = pupil_movement[0]
+            if ref_is_valid(new_ref, center_ref, loc_tag):
+                
+                update(f"""UPDATE {table_name} SET {loc_tag+'_left_x'}={new_ref[0][0]},
+                                                   {loc_tag+'_left_y'}={new_ref[0][1]},
+                                                   {loc_tag+'_right_x'}={new_ref[1][0]},
+                                                   {loc_tag+'_right_y'}={new_ref[1][1]}
+                                               WHERE test_id='{test_id}' AND test_taker_id='{test_taker_id}';""")  
+                # save new reference point
+                return {'result':True, 'location_tag':loc_tag, 'new_ref':new_ref} 
+            else:
+                return {'result':False, 'location_tag':loc_tag, 'new_ref':new_ref}
+            
     
+@app.route('/api/eyetrack/ab', methods=['POST'])
+def get_eyetrack_ab():
+    """ input = 
+        1) frames(binary encoded) (24)
+        2) project_id 
+        3) testtaker_id
+        4) screen stillframe
+        5) boundingbox coords 
+    Saves = Trajectory Logs, Gazehit counts for correspondiong bounding boxes
+    Returns = StateResponse
+    """
+    if request.method == 'POST':
+        try:
+            frames = request.get_json()['frames'] # base64 encoded frames
+            project_id = request.get_json()['project_id']
+            testtaker_id = request.get_json()['testtaker_id']
+            screen = request.get_json()['screen']
+            boundingbox = request.get_json()['boundingbox']
+            
+        except:
+            return {'error_message':'unclear or incomplete payload information in the request json'}
+        try:
+            pupil_movements = record_pupil_movements(frames) # record pupil movements
+            pixel_movements = process_pupil_movements(pupil_movements)
+            
+            OOI_analysis_result = deduce_object_of_interest(pixel_movements, boundingbox)
+            
+            # Save analysis results to DB
+            insert() # save trajectory info
+            insert() # save OOI analysis result 
+            return {'success':True}
+        except:
+            return {'success':False}
+        
 
-"""POST actions for DB manipulation tasks"""
-@app.route('/api/db/login', methods=['GET'])
-def login():
-    connection = connect_to_database()
-    cursor = connection.cursor()
-    cursor.execute("SELECT * FROM user")
-    users = cursor.fetchall()
-    cursor.close()
-    connection.close()
-    return {'resp':users}
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=105) 
