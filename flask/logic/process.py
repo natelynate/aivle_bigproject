@@ -57,7 +57,17 @@ def record_pupil_movements(frames, excludeNone=True):
             pupil_movements.append([(int(left_pupil[0]), int(left_pupil[1])), (int(right_pupil[0]), int(right_pupil[1]))])
     return pupil_movements
 
-            
+
+def get_displacement_ratios(ref_point, center_ref, loc_tag):
+    """"""
+    # Calculate displacement ratios relative to the center point
+    if loc_tag in ['left', 'right']:
+        return round(960 / abs(center_ref[0] - ref_point[0]), 2)
+    elif loc_tag in ['up', 'down']:
+        return round(540 / abs(center_ref[1] - ref_point[1]), 2)
+    
+    
+    
 def ref_is_valid(new_ref, center_ref, loc_tag) -> bool:
     """Compare the reference point coordinates and check if it is valid depending on the reference point location tag"""
     referencing_eye = 1 # 0 for left, 1 for right (임시)
@@ -76,7 +86,7 @@ def ref_is_valid(new_ref, center_ref, loc_tag) -> bool:
     return True
         
 
-def process_pupil_movements(pupil_movement):
+def process_pupil_movements(pupil_movement, addNoise=True):
     """Convert pupil displacements into corresponding pixel coordinates"""
     def addWhiteNoise(x, y, mean=10, std_dev=5):
         """Add white noise to the pixel coordinates"""
@@ -85,21 +95,22 @@ def process_pupil_movements(pupil_movement):
         return x+noise_x, y+noise_y
     
     def findScaleFactor(pupil_movement):
-        """"""
+        """Description Text"""
         minX, minY, maxX, maxY = 1e99, 1e99, -1e99, -1e99
                 
         for frame in pupil_movement:
-            minX = min(frame[0], minX)
-            minY = min(frame[1], minY)
-            maxX = max(frame[0], maxX)
-            maxY = max(frame[1], maxY)
+            right_pupil = frame[1]
+            minX = min(right_pupil[0], minX)
+            minY = min(right_pupil[1], minY)
+            maxX = max(right_pupil[0], maxX)
+            maxY = max(right_pupil[1], maxY)
         x_scale_factor, y_scale_factor = (maxX - minX) / 1920, (maxY - minY) / 1080
         return x_scale_factor, y_scale_factor
-
-    def convert2pixel(x, y, x_scale_factor, y_scale_factor, addNoise=True):
+    
+    def convert2pixel(x, y, x_scale_factor, y_scale_factor):
         """Convert pupil coordination to pixel coordination"""
         x /= x_scale_factor
-        y /= x_scale_factor
+        y /= y_scale_factor
         if addNoise:
             x, y = addWhiteNoise(x, y)
         if x > 1920:
@@ -107,14 +118,16 @@ def process_pupil_movements(pupil_movement):
         if y > 1080:
             y = 1060
         return int(x), int(y)
-
+    
     pixel_movements = []
     x_scale_factor, y_scale_factor = findScaleFactor(pupil_movement)
+    print("scale_factors: ", x_scale_factor, y_scale_factor)
     
     for coord in pupil_movement:
-        pixel_x, pixel_y = convert2pixel(coord[0], coord[1], x_scale_factor, y_scale_factor)
+        pixel_x, pixel_y = convert2pixel(coord[1][0], coord[1][1], x_scale_factor, y_scale_factor)
         pixel_movements.append((pixel_x, pixel_y))
     return pixel_movements
+
 
 def deduce_object_of_interest(pixel_coords, object_regions):
     """Deduce which object of interest each pixel coordinates are on and return dictionary"""
