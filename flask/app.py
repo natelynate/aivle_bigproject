@@ -79,7 +79,6 @@ def get_eyetrack_ref():
             
             new_ref = pupil_movement[0]
             if ref_is_valid(new_ref, center_ref, loc_tag):
-                
                 update(f"""UPDATE {table_name} SET {loc_tag+'_left_x'}={new_ref[0][0]},
                                                    {loc_tag+'_left_y'}={new_ref[0][1]},
                                                    {loc_tag+'_right_x'}={new_ref[1][0]},
@@ -109,7 +108,6 @@ def get_eyetrack_ab():
             testtaker_id = request.get_json()['testtaker_id']
             screen = request.get_json()['screen']
             boundingbox = request.get_json()['boundingbox']
-            
         except:
             return {'error_message':'unclear or incomplete payload information in the request json'}
         try:
@@ -125,8 +123,6 @@ def get_eyetrack_ab():
         except:
             return {'success':False}
         
-
-
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=105) 
     

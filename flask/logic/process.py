@@ -117,5 +117,14 @@ def process_pupil_movements(pupil_movement):
     return pixel_movements
 
 def deduce_object_of_interest(pixel_coords, object_regions):
-    """Deduce which object of interest each pixel coordinates are on and return an array"""
-    pass
+    """Deduce which object of interest each pixel coordinates are on and return dictionary"""
+    result = {key:0 for key in object_regions} # dict for recording hitcounts 
+    for pixel_coord in pixel_coords:
+        x, y = pixel_coord
+        for obj_id in object_regions:
+            boundingbox = object_regions[obj_id] # access the bounding box coordinates of each object
+            if (boundingbox[0][0] <= x <= boundingbox[1][0]) and (boundingbox[0][1] <= y <= boundingbox[1][1]):
+                result[obj_id] += 1
+    return result
+                
+
