@@ -15,9 +15,6 @@
     <button id="restartButton">다시하기</button>
     <script type="text/javascript" src="reddots.js"></script>
     <script>
-        // 전역 변수로 캔버스 크기 저장
-        let canvasWidth, canvasHeight;
-
         document.addEventListener("DOMContentLoaded", function() {
             const canvas = document.getElementById("myCanvas");
             const ctx = canvas.getContext("2d");
@@ -28,8 +25,8 @@
 
             function resizeCanvas() {
                 // 캔버스의 너비와 높이를 현재 화면 크기에 맞게 설정
-                canvas.width = canvasWidth = window.innerWidth;
-                canvas.height = canvasHeight = window.innerHeight;
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
             }
 
             function blinkDot(timestamp) {
