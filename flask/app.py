@@ -27,13 +27,6 @@ def upload_image():
                 'sadness':float(sentiment_probs[3]),
                 'surprise':float(sentiment_probs[4])}}
 
-# Submitting webm video clip
-@app.route('/api/video_upload/test', methods=['POST'])
-def test():
-    """Deprecated"""
-    return None
-        
-
 # Submitting video clip frames for eyetracking
 @app.route('/api/eyetrack/reference', methods=['POST'])
 def get_eyetrack_ref():
@@ -115,41 +108,41 @@ def get_eyetrack_ab():
             frames = request.get_json()['frames'] # base64 encoded frames
             test_id = request.get_json()['test_id']
             test_taker_id = request.get_json()['test_taker_id']
-            screen = request.get_json()['screen']
             boundingbox = request.get_json()['boundingbox']
-            
-            print(test_id)
-            print(test_taker_id)
-            print(boundingbox)
         except:
             return {'error_message':'unclear or incomplete payload information in the request json'}
         try:
             pupil_movements = record_pupil_movements(frames) # record pupil movements after performing decoding
-            print("Decoding successfull")
-            print(pupil_movements)
-           
-            
             displacement_ratios = read(f"""SELECT displacement_ratio_left, displacement_ratio_right, displacement_ratio_up, displacement_ratio_down
                                            FROM {table_name}
                                            WHERE test_id='{test_id}' AND test_taker_id='{test_taker_id}';""")[0]
-            displacement_ratios = {loc:ratio for loc, ratio in zip(['left', 'right', 'up', 'down'], displacement_ratios)}  
-            print("displacement_ratios: ", displacement_ratios)                         
+            displacement_ratios = {loc:ratio for loc, ratio in zip(['left', 'right', 'up', 'down'], displacement_ratios)}        
             center = read(f"""SELECT center_right_x, center_right_y
                               FROM {table_name}
                               WHERE test_id='{test_id}' AND test_taker_id='{test_taker_id}';""")[0]
-            pixel_movements = process_pupil_movements(pupil_movements, center, displacement_ratios) # translate pupil coordinates to pixels
-            for i in pixel_movements:
-                print(i)
-            print("finished translation to pixel")
-            OOI_analysis_result = deduce_object_of_interest(pixel_movements, boundingbox)
-            print()
+            pixel_trajectory_x, pixel_trajectory_y = process_pupil_movements(pupil_movements, center, displacement_ratios) # translate pupil coordinates to pixels
+            OOI_analysis_result = deduce_object_of_interest(pixel_trajectory_x, pixel_trajectory_y, boundingbox)
+      
             # Save analysis results to DB
-            # insert() # save trajectory info
-            # insert() # save OOI analysis result 
+            insert(f"""INSERT INTO Individual_TrajectoryResult 
+                   VALUES ('{test_id}', '{test_taker_id}', '[{', '.join(map(str, pixel_trajectory_x))}]', '[{', '.join(map(str, pixel_trajectory_y))}]');""")
+            insert(f"""INSERT INTO Individual_OOIResult 
+                       VALUES ('{test_id}', '{test_taker_id}', {OOI_analysis_result['object1']}, {OOI_analysis_result['object2']});""") # save OOI analysis result 
+    
             return {'success':True, 'result':OOI_analysis_result}
         except:
             return {'success':False, 'result':0}
-        
+
+
+@app.route('/api/dashboard/visualize/heatmap', methods=['POST'])
+def get_heatmap():
+    pass
+
+
+@app.route('/api/dashboard/visualize/trajectory', methods=['POST'])
+def get_trajectory():
+    pass
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=105) 
     
