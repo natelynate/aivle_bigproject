@@ -18,6 +18,8 @@ document.addEventListener("DOMContentLoaded", function() {
     let animationStartTime; // 애니메이션 시작 시간
 
     function blinkDot(timestamp) {
+        blink_interval_sec = 0.4
+
         // 애니메이션 시작 시간 초기화
         if (!animationStartTime) {
             animationStartTime = timestamp;
@@ -35,7 +37,7 @@ document.addEventListener("DOMContentLoaded", function() {
             const elapsedSeconds = elapsedMilliseconds / 1000;
 
             // 0.4초마다 깜박이도록 설정
-            if (elapsedSeconds >= 0.4) {
+            if (elapsedSeconds >= blink_interval_sec) {
                 ctx.clearRect(0, 0, canvas.width, canvas.height); // 캔버스를 지움
 
                 let centerX, centerY;

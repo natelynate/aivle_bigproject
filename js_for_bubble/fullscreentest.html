@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>전체화면 예제</title>
+  <style>
+    #fullscreenMessage {
+      display: none;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background-color: rgba(255, 255, 255, 0.8);
+      padding: 20px;
+    }
+
+    #startButton {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+<div id="fullscreenMessage">전체화면으로 해주세요</div>
+<button id="startButton">시작</button>
+
+<script>
+  const fullscreenMessage = document.getElementById('fullscreenMessage');
+  const startButton = document.getElementById('startButton');
+
+  // 전체화면이 변경될 때마다 호출되는 함수
+  function handleFullscreenChange() {
+    if (document.fullscreenElement) {
+      // 전체화면일 때
+      fullscreenMessage.style.display = 'none';
+      startButton.style.display = 'block';
+    } else {
+      // 전체화면이 아닐 때
+      fullscreenMessage.style.display = 'block';
+      startButton.style.display = 'none';
+    }
+  }
+
+  // [시작] 버튼 클릭 시 전체화면으로 진입
+  startButton.addEventListener('click', () => {
+    document.documentElement.requestFullscreen().catch(err => {
+      console.error('전체화면 진입에 실패했습니다:', err);
+    });
+  });
+
+  // 전체화면 변경 이벤트 리스너 등록
+  document.addEventListener('fullscreenchange', handleFullscreenChange);
+
+  // 초기 상태 설정
+  handleFullscreenChange();
+</script>
+
+</body>
+</html>
