@@ -132,13 +132,15 @@ def get_eyetrack_ab():
             displacement_ratios = read(f"""SELECT displacement_ratio_left, displacement_ratio_right, displacement_ratio_up, displacement_ratio_down
                                            FROM {table_name}
                                            WHERE test_id='{test_id}' AND test_taker_id='{test_taker_id}';""")[0]
-            displacement_ratios = {loc:ratio for loc, ratio in zip(['center', 'left', 'right', 'up', 'down'], displacement_ratios)}  
+            displacement_ratios = {loc:ratio for loc, ratio in zip(['left', 'right', 'up', 'down'], displacement_ratios)}  
             print("displacement_ratios: ", displacement_ratios)                         
-            
-            pixel_movements = process_pupil_movements(pupil_movements, displacement_ratios) # translate pupil coordinates to pixels
-            print(pixel_movements)
+            center = read(f"""SELECT center_right_x, center_right_y
+                              FROM {table_name}
+                              WHERE test_id='{test_id}' AND test_taker_id='{test_taker_id}';""")[0]
+            pixel_movements = process_pupil_movements(pupil_movements, center, displacement_ratios) # translate pupil coordinates to pixels
+            for i in pixel_movements:
+                print(i)
             print("finished translation to pixel")
-            print(pixel_movements[0], pixel_movements[1])
             OOI_analysis_result = deduce_object_of_interest(pixel_movements, boundingbox)
             print()
             # Save analysis results to DB

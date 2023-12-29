@@ -67,7 +67,6 @@ def get_displacement_ratios(ref_point, center_ref, loc_tag):
         return round(540 / abs(center_ref[1] - ref_point[1]), 2)
     
     
-    
 def ref_is_valid(new_ref, center_ref, loc_tag) -> bool:
     """Compare the reference point coordinates and check if it is valid depending on the reference point location tag"""
     referencing_eye = 1 # 0 for left, 1 for right (임시)
@@ -86,46 +85,101 @@ def ref_is_valid(new_ref, center_ref, loc_tag) -> bool:
     return True
         
 
-def process_pupil_movements(pupil_movement, addNoise=True):
+def process_pupil_movements(pupil_movement, center_ref, displacement_ratio, addNoise=True):
     """Convert pupil displacements into corresponding pixel coordinates"""
-    def addWhiteNoise(x, y, mean=10, std_dev=5):
+    def addWhiteNoise(p, mean=20, std_dev=5):
         """Add white noise to the pixel coordinates"""
-        noise_x = np.random.normal(loc=mean, scale=std_dev)
-        noise_y = np.random.normal(loc=mean, scale=std_dev)
-        return x+noise_x, y+noise_y
+        noise = np.random.normal(loc=mean, scale=std_dev)
+        return p+noise
     
-    def findScaleFactor(pupil_movement):
+    def findScaleFactor(pixel_coords):
         """Description Text"""
         minX, minY, maxX, maxY = 1e99, 1e99, -1e99, -1e99
                 
-        for frame in pupil_movement:
-            right_pupil = frame[1]
-            minX = min(right_pupil[0], minX)
-            minY = min(right_pupil[1], minY)
-            maxX = max(right_pupil[0], maxX)
-            maxY = max(right_pupil[1], maxY)
-        x_scale_factor, y_scale_factor = (maxX - minX) / 1920, (maxY - minY) / 1080
+        for coord in pixel_coords:
+            x, y = coord
+            minX = min(x, minX)
+            minY = min(y, minY)
+            maxX = max(x, maxX)
+            maxY = max(y, maxY)
+        print(minX, minY, "//", maxX, maxY)
+        x_scale_factor, y_scale_factor = abs(maxX - minX) / 1920, abs(maxY - minY) / 1080
         return x_scale_factor, y_scale_factor
     
-    def convert2pixel(x, y, x_scale_factor, y_scale_factor):
+    def findQuadrant(x, y):
+        center_x, center_y = center_ref
+        horizontal_ratio, vertical_ratio = 0, 0
+        if x < center_x:
+            horizontal_ratio = displacement_ratio['left']
+        else:
+            horizontal_ratio = displacement_ratio['right']
+        if y < center_y:
+            vertical_ratio = displacement_ratio['up']
+        else:
+            vertical_ratio = displacement_ratio['down']
+        return horizontal_ratio, vertical_ratio
+    
+    def convert2pixel(x, y):
         """Convert pupil coordination to pixel coordination"""
-        x /= x_scale_factor
-        y /= y_scale_factor
+        center_x, center_y = center_ref
+
+        # Get horizontal and Vertical displacement ratio to use
+        horizontal_ratio, vertical_ratio = findQuadrant(x, y)
+        
+        # Calculate Displacements
+        if x > center_x: # x is right from center
+            horizontal_displacement = x - center_x
+        else: # x is left from center 
+            horizontal_displacement = center_x - x
+        if y < center_y: # y is above center
+            vertical_displacement = y - center_y
+        else: # y is below center
+            vertical_displacement = center_y - y 
+        
+        # Convert pupil displacements into pixelwise displacement
+        pixel_displacement_x = horizontal_displacement * horizontal_ratio
+        pixel_displacement_y = vertical_displacement  * vertical_ratio
+
+        new_x, new_y = center_x + pixel_displacement_x, center_y + pixel_displacement_y
+        
+        # Add white noise if addNoise is set to True(default:True)
         if addNoise:
-            x, y = addWhiteNoise(x, y)
-        if x > 1920:
-            x = 1900
-        if y > 1080:
-            y = 1060
-        return int(x), int(y)
+            new_x_with_noise = addWhiteNoise(new_x)
+            new_y_with_noise = addWhiteNoise(new_y)
+            
+        return int(new_x_with_noise), int(new_y_with_noise)
     
     pixel_movements = []
-    x_scale_factor, y_scale_factor = findScaleFactor(pupil_movement)
-    print("scale_factors: ", x_scale_factor, y_scale_factor)
-    
     for coord in pupil_movement:
-        pixel_x, pixel_y = convert2pixel(coord[1][0], coord[1][1], x_scale_factor, y_scale_factor)
-        pixel_movements.append((pixel_x, pixel_y))
+        x, y = coord[1][0], coord[1][1]
+        pixel_x, pixel_y = convert2pixel(x, y)
+        
+        if pixel_x > 1920:
+            pixel_x = 1800
+            pixel_x = addWhiteNoise(pixel_x)
+        if pixel_x < 0:
+            pixel_x = 50
+            pixel_x = addWhiteNoise(pixel_x)
+        
+        if pixel_y > 1020:
+            pixel_y = 900
+            pixel_y = addWhiteNoise(pixel_y)
+        if pixel_y < 0:
+            pixel_y = 50
+            pixel_y = addWhiteNoise(pixel_y)
+        pixel_movements.append((int(pixel_x), int(pixel_y)))
+
+    # Scale with scale factor if computed values are outrageous
+    # x_scale_factor, y_scale_factor = findScaleFactor(pixel_movements)
+    # print("ScalingFactors:  ", x_scale_factor, y_scale_factor)
+    
+    # scaled_pixel_movements = []
+    # for pixel in pixel_movements:
+    #     x, y = pixel
+    #     scaled_x, scaled_y = x * x_scale_factor, y * y_scale_factor 
+    #     print(scaled_x, scaled_y)
+    #     scaled_pixel_movements.append((scaled_x, scaled_y))
+
     return pixel_movements
 
 
