@@ -3,6 +3,8 @@ import tempfile
 import os
 import pymysql
 import base64
+import random
+import json
 from pathlib import Path
 from logic.db import * # import db setup functions
 from logic.process import *
@@ -136,8 +138,63 @@ def get_eyetrack_ab():
 
 @app.route('/api/dashboard/visualize/heatmap', methods=['POST'])
 def get_heatmap():
-    pass
+    if request.method == 'POST':
+        try:
+            test_id = request.get_json()['test_id']
+            test_taker_id = request.get_json()['test_taker_id']
+            screen = request.get_json()['screen']
+            screen = decode_image(screen)
+        except:
+            return {'error_message':'unclear or incomplete payload information in the request json'}
+        
+        table_name = 'Individual_TrajectoryResult'
+        try:
+            pixel_movements_x, pixel_movements_y = read(f"""SELECT x_trajectory, y_trajectory
+                                                            FROM {table_name} 
+                                                            WHERE test_id='{test_id}' AND test_taker_id='{test_taker_id}';""")[0]
+            pixel_movements_x = json.loads(pixel_movements_x)
+            pixel_movements_y = json.loads(pixel_movements_y)
+            print(pixel_movements_x[:10])
+        except:
+            return {'error_message':'Unable to retrieve the user gaze trajectory for given test set.'}                                           
 
+        # Create empty np.array 
+        heatmap = np.zeros_like(screen[:, :, 0], np.float32)  # Use float32 for better precision
+        
+        # Interpolate between points
+        addNoise = True
+        for idx in range(len(pixel_movements_x)):
+            x, y = int(pixel_movements_x[idx]), int(pixel_movements_y[idx])
+            if idx > 0:
+                prev_x, prev_y = int(pixel_movements_x[idx-1]), int(pixel_movements_y[idx-1]) 
+                num_points = int(np.hypot(x - prev_x, y - prev_y)) // 4 # Number of points to interpolate based on the Euclidean distance between the points
+                x_values = np.linspace(prev_x, x, num_points, endpoint=True)
+                y_values = np.linspace(prev_y, y, num_points, endpoint=True)
+                for px, py in zip(x_values, y_values):
+                    if addNoise:
+                        npx = addWhiteNoise(px, mean=3, std_dev=2)
+                        npy = addWhiteNoise(py, mean=3, std_dev=2)
+                        try:
+                            # heatmap[int(py), int(px)] += 1
+                            heatmap[int(npy), int(npx)] += 1
+                            heatmap[int(npy)+random.choice([-1, -2, 0, 1, 2, 3]), int(npx)] += 1
+                            heatmap[int(npy)+random.choice([-1, -2, 0, 1, 2, 3]), int(npx)] += 1
+                            heatmap[int(npy), int(npx)+random.choice([-1, -2, 0, 1, 2, 3])] += 1
+                            heatmap[int(npy), int(npx)+random.choice([-1, -2, 0, 1, 2, 3])] += 1
+                        except:
+                            pass
+        # Apply Gaussian blur to the heatmap
+        heatmap_blurred = cv2.GaussianBlur(heatmap, (201, 201), 0)  # Use a larger kernel size for more smoothing
+        # Normalize the blurred heatmap to 8-bit range
+        heatmap_normalized = cv2.normalize(heatmap_blurred, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8U)
+        # Superimpose heatmap to the uploaded screen image
+        # Apply the colormap
+        heatmap_img = cv2.applyColorMap(heatmap_normalized, cv2.COLORMAP_JET)
+        super_imposed_img = cv2.addWeighted(heatmap_img, 0.5, screen, 0.5, 0)
+        return {'result_image':base64.b64encode(cv2.imencode('.jpg', super_imposed_img)[1]).decode()}
+
+
+            
 
 @app.route('/api/dashboard/visualize/trajectory', methods=['POST'])
 def get_trajectory():

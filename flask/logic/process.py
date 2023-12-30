@@ -83,15 +83,14 @@ def ref_is_valid(new_ref, center_ref, loc_tag) -> bool:
         if new_ref[referencing_eye][1] <= center_ref[referencing_eye][1]:
             return False
     return True
-        
+
+def addWhiteNoise(p, mean=20, std_dev=5):
+    """Add white noise to the pixel coordinates"""
+    noise = np.random.normal(loc=mean, scale=std_dev)
+    return p+noise
 
 def process_pupil_movements(pupil_movement, center_ref, displacement_ratio, addNoise=True):
-    """Convert pupil displacements into corresponding pixel coordinates"""
-    def addWhiteNoise(p, mean=20, std_dev=5):
-        """Add white noise to the pixel coordinates"""
-        noise = np.random.normal(loc=mean, scale=std_dev)
-        return p+noise
-    
+    """Convert pupil displacements into corresponding pixel coordinates"""   
     def findScaleFactor(pixel_coords):
         """Description Text"""
         minX, minY, maxX, maxY = 1e99, 1e99, -1e99, -1e99
@@ -149,7 +148,7 @@ def process_pupil_movements(pupil_movement, center_ref, displacement_ratio, addN
             
         return int(new_x_with_noise), int(new_y_with_noise)
     
-    pixel_movements = []
+    pixel_movements_x, pixel_movements_y = [], []
     for coord in pupil_movement:
         x, y = coord[1][0], coord[1][1]
         pixel_x, pixel_y = convert2pixel(x, y)
@@ -167,7 +166,8 @@ def process_pupil_movements(pupil_movement, center_ref, displacement_ratio, addN
         if pixel_y < 0:
             pixel_y = 50
             pixel_y = addWhiteNoise(pixel_y)
-        pixel_movements.append((int(pixel_x), int(pixel_y)))
+        pixel_movements_x.append(int(pixel_x))
+        pixel_movements_y.append(int(pixel_y))
 
     # Scale with scale factor if computed values are outrageous
     # x_scale_factor, y_scale_factor = findScaleFactor(pixel_movements)
@@ -180,14 +180,13 @@ def process_pupil_movements(pupil_movement, center_ref, displacement_ratio, addN
     #     print(scaled_x, scaled_y)
     #     scaled_pixel_movements.append((scaled_x, scaled_y))
 
-    return pixel_movements
+    return pixel_movements_x, pixel_movements_y
 
 
-def deduce_object_of_interest(pixel_coords, object_regions):
+def deduce_object_of_interest(pixel_coords_x, pixel_coords_y, object_regions):
     """Deduce which object of interest each pixel coordinates are on and return dictionary"""
     result = {key:0 for key in object_regions} # dict for recording hitcounts 
-    for pixel_coord in pixel_coords:
-        x, y = pixel_coord
+    for x, y in zip(pixel_coords_x, pixel_coords_y):
         for obj_id in object_regions:
             boundingbox = object_regions[obj_id] # access the bounding box coordinates of each object
             if (boundingbox[0][0] <= x <= boundingbox[1][0]) and (boundingbox[0][1] <= y <= boundingbox[1][1]):
