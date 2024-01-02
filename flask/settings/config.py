@@ -1,6 +1,6 @@
 # Database Connection Settings 
-HOST = '43.202.81.144'
-USER = 'user03'
-PASSWORD = 'Aivle..1324'
+HOST = 'ec2-43-201-59-23.ap-northeast-2.compute.amazonaws.com'
+USER = 'user02'
+PASSWORD = 'Aivle<,1324'
 DATABASE = 'aivle06'
 
