@@ -3,12 +3,15 @@ import pymysql
 from settings.config import HOST, USER, PASSWORD, DATABASE
 
 def connect_to_database(HOST=HOST, USER=USER, PASSWORD=PASSWORD, DATABASE=DATABASE):
-    connection = pymysql.connect(
-        host = HOST,
-        user = USER,
-        password = PASSWORD,
-        database = DATABASE
-    )
+    try:
+        connection = pymysql.connect(
+            host = HOST,
+            user = USER,
+            password = PASSWORD,
+            database = DATABASE
+        )
+    except:
+        return ValueError("Can't establish DB Connection")
     return connection
 
 def insert(sql):

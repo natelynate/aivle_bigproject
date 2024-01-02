@@ -4,6 +4,11 @@ import tensorflow as tf
 import base64
 from models.pupil_tracker import GazeTracking
 
+def softmax(x):
+    # Ensure numerical stability by subtracting the maximum value
+    e_x = np.exp(x - np.max(x))
+    return e_x / e_x.sum(axis=0)
+
 def binarypattern(im):         
     """Convert the image into a Binary Pattern"""                      
     img = np.zeros_like(im)
@@ -30,11 +35,9 @@ def decode_image(frame):
     img = cv2.imdecode(jpg_as_np, flags=1)
     return img
 
-def preprocess_image(img_jpg_original):
+def preprocess_image(img):
     """Apply preprocessing steps to the jpg image.
        Resized to (48, 48), applied regularization and expanded dim into (1, 48, 48, 1)"""
-    img = decode_image(img_jpg_original)
-
     # preprocessing
     img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) # 흑백 변환
     img_reshaped = cv2.resize(img, (48, 48))
@@ -167,19 +170,7 @@ def process_pupil_movements(pupil_movement, center_ref, displacement_ratio, addN
             pixel_y = 50
             pixel_y = addWhiteNoise(pixel_y)
         pixel_movements_x.append(int(pixel_x))
-        pixel_movements_y.append(int(pixel_y))
-
-    # Scale with scale factor if computed values are outrageous
-    # x_scale_factor, y_scale_factor = findScaleFactor(pixel_movements)
-    # print("ScalingFactors:  ", x_scale_factor, y_scale_factor)
-    
-    # scaled_pixel_movements = []
-    # for pixel in pixel_movements:
-    #     x, y = pixel
-    #     scaled_x, scaled_y = x * x_scale_factor, y * y_scale_factor 
-    #     print(scaled_x, scaled_y)
-    #     scaled_pixel_movements.append((scaled_x, scaled_y))
-
+        pixel_movements_y.append(int(pixel_y))  
     return pixel_movements_x, pixel_movements_y
 
 
@@ -192,5 +183,3 @@ def deduce_object_of_interest(pixel_coords_x, pixel_coords_y, object_regions):
             if (boundingbox[0][0] <= x <= boundingbox[1][0]) and (boundingbox[0][1] <= y <= boundingbox[1][1]):
                 result[obj_id] += 1
     return result
-                
-

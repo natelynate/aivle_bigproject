@@ -66,12 +66,12 @@ def api_test(task, test_id, test_taker_id):
         url = URL_BASE + 'dashboard/visualize/heatmap'
         screen = cv2.imread('./sample_data/eyetracking_src/screen.jpg')
         encoded_frame = base64.b64encode(cv2.imencode('.jpg', screen)[1]).decode()
-        test_id = test_id
-        test_taker_id = test_taker_id
-        payload = {'test_id':'sample_test1',
-                   'test_taker_id':'yoonkihwa',
+
+        payload = {'test_id':test_id,
+                   'test_taker_id':test_taker_id,
                    'screen':encoded_frame}
         response = requests.post(url, headers=headers, data=json.dumps(payload))
+        
         if response.status_code == 200:
             heatmap = response.json()['result_image']
             heatmap = decode_image(heatmap)
@@ -100,13 +100,13 @@ def api_test(task, test_id, test_taker_id):
                 print(f"image returned as jpg as {save_location+ f'{idx}.jpg'}")
                 # Create a video file
                 output_video_path = f'./sample_data/{test_id}_{test_taker_id}_{task}.avi'
-                last_image = encoded_frame
-                height, width, layers = last_image.shape
-                fourcc = cv2.VideoWriter_fourcc(*'XVID')  # You can use other codecs like 'MJPG' or 'MP4V'
-                video_writer = cv2.VideoWriter(output_video_path, fourcc, 24, (width, height))
-                for image_file in encoded_frames:
-                        video_writer.write(image_file)
-                print("video file saved at ", output_video_path)
+            last_image = encoded_frame
+            height, width, layers = last_image.shape
+            fourcc = cv2.VideoWriter_fourcc(*'XVID')  # You can use other codecs like 'MJPG' or 'MP4V'
+            video_writer = cv2.VideoWriter(output_video_path, fourcc, 24, (width, height))
+            for image_file in encoded_frames:
+                video_writer.write(image_file)
+            print("video file saved at ", output_video_path)
 
     if task == 'microexpression/baseline':
         url = URL_BASE + 'microexpression/baseline'
@@ -153,16 +153,16 @@ if __name__ == '__main__':
     test_id = '11433'
     test_taker_id = 'a041209'
     print("Starting...")
-    # check_conn()
-    api_test(task='microexpression/baseline', test_id=test_id, test_taker_id=test_taker_id)
+    check_conn()
+    # api_test(task='microexpression/baseline', test_id=test_id, test_taker_id=test_taker_id)
     # print("=====")
-    api_test(task='microexpression/analysis', test_id=test_id, test_taker_id=test_taker_id)
+    # api_test(task='microexpression/analysis', test_id=test_id, test_taker_id=test_taker_id)
     # print("=====")
-    api_test(task='ref', test_id=test_id, test_taker_id=test_taker_id)
+    # api_test(task='ref', test_id=test_id, test_taker_id=test_taker_id)
     # print("=====")
-    api_test(task='ab', test_id=test_id, test_taker_id=test_taker_id)
+    # api_test(task='ab', test_id=test_id, test_taker_id=test_taker_id)
 
     # #########
-    # api_test(task='heatmap', test_id=test_id, test_taker_id=test_taker_id)
+    api_test(task='heatmap', test_id=test_id, test_taker_id=test_taker_id)
     # print("=====")
-    # api_test(task='trajectory', test_id=test_id, test_taker_id=test_taker_id)
+    api_test(task='trajectory', test_id=test_id, test_taker_id=test_taker_id)
