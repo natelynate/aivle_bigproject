@@ -1,5 +1,4 @@
 from flask import Flask, request
-import tempfile
 import os
 import pymysql
 import base64
@@ -18,6 +17,16 @@ model = tf.keras.models.load_model(model_dir)
 
 """POST action for submitting media files from FE to Flask"""
 # Submitting Individual image
+@app.route('/base', methods=['GET', 'POST'])
+def state():
+    if request.method == 'GET':
+        try:
+            data = read("""SELECT * FROM TrajectoryResult;""")[0]
+            return {'state':data}
+        except:
+            return {'state':'unable to connect to DB'}
+
+
 @app.route('/api/microexpression/baseline', methods=['POST'])
 def get_microexpression_baseline():
     if request.method == 'POST':
@@ -277,6 +286,6 @@ def get_trajectory():
     
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=105)
+    app.run(host='0.0.0.0', port=5000)
      
     

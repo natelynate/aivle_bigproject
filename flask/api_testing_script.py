@@ -12,14 +12,22 @@ import random
 
 headers = {'content-type':'application/json'}
 
+def check_conn():
+    url = 'http://3.35.220.17:5000/base'
+    payload = {}
+    response = requests.get(url, headers=headers, data=json.dumps(payload))     
+    print("For ref point task", response.text)
+
+
 def api_test(task, test_id, test_taker_id):
     coords = [(1920//2, 1080//2), (0, 1080//2), (1920, 1080//2), (1920//2, 0), (1920//2, 1080)]
     locs = ['center', 'left', 'right', 'up', 'down'] 
-    URL_BASE = 'http://127.0.0.1:105/api/'
+    URL_BASE = 'http://3.35.220.17:5000/api/'
     SRC_BASE = './sample_data/eyetracking_src/'
 
     if task == 'ref':
         url = URL_BASE + 'eyetrack/reference'
+        print(url)
         for idx, loc_tag in enumerate(locs):
             coord = coords[idx]
             image = cv2.imread(SRC_BASE + f'{loc_tag}.jpg')
@@ -33,6 +41,7 @@ def api_test(task, test_id, test_taker_id):
             response = requests.post(url, headers=headers, data=json.dumps(payload))           
             print("For ref point task", loc_tag, response.text)
             print("=====================================================")
+            
     if task == 'ab':
         url = URL_BASE + 'eyetrack/ab'
         cap = cv2.VideoCapture(SRC_BASE + 'gaze.mp4')
@@ -141,17 +150,19 @@ def api_test(task, test_id, test_taker_id):
     
 
 if __name__ == '__main__':
-    test_id = '23345'
-    test_taker_id = 'a03945'
+    test_id = '11433'
+    test_taker_id = 'a041209'
+    print("Starting...")
+    # check_conn()
     api_test(task='microexpression/baseline', test_id=test_id, test_taker_id=test_taker_id)
-    print("=====")
+    # print("=====")
     api_test(task='microexpression/analysis', test_id=test_id, test_taker_id=test_taker_id)
-    print("=====")
+    # print("=====")
     api_test(task='ref', test_id=test_id, test_taker_id=test_taker_id)
-    print("=====")
+    # print("=====")
     api_test(task='ab', test_id=test_id, test_taker_id=test_taker_id)
 
-    #########
-    api_test(task='heatmap', test_id=test_id, test_taker_id=test_taker_id)
-    print("=====")
-    api_test(task='trajectory', test_id=test_id, test_taker_id=test_taker_id)
+    # #########
+    # api_test(task='heatmap', test_id=test_id, test_taker_id=test_taker_id)
+    # print("=====")
+    # api_test(task='trajectory', test_id=test_id, test_taker_id=test_taker_id)
