@@ -18,16 +18,60 @@ model = tf.keras.models.load_model(model_dir)
 
 """POST action for submitting media files from FE to Flask"""
 # Submitting Individual image
-@app.route('/api/image_upload', methods=['POST'])
-def upload_image():
-    jpg_original = base64.b64decode(request.get_json()['baseline_img'])
-    img_binary = preprocess_image(jpg_original)
-    sentiment_probs = model.predict(img_binary)[0]
-    return {'data':{'anger':float(sentiment_probs[0]),
-                'disgust':float(sentiment_probs[1]),
-                'fear':float(sentiment_probs[2]),
-                'sadness':float(sentiment_probs[3]),
-                'surprise':float(sentiment_probs[4])}}
+@app.route('/api/microexpression/baseline', methods=['POST'])
+def get_microexpression_baseline():
+    if request.method == 'POST':
+        table_name = 'Microexpression_Baseline'
+        try: 
+            test_id = request.get_json()['test_id']
+            test_taker_id = request.get_json()['test_taker_id']
+            frames = request.get_json()['frames']
+        except: 
+             return {'error_message':'unclear or incomplete payload information in the request json'}
+        
+        delete(f"""DELETE FROM {table_name} WHERE test_id='{test_id}' AND test_taker_id='{test_taker_id}';""") # delete previous record
+        
+        class_probs = [0, 0, 0, 0, 0, 0]
+        class_names = ['anger', 'disgust', 'fear', 'happiness', 'sadness', 'surprise']
+        for frame in frames:
+            frame = decode_image(frame)
+            processed_binary = preprocess_image(frame)
+            for idx, sentiment in enumerate(model.predict(processed_binary)[0]):
+                class_probs[idx] += float(sentiment)
+
+        insert(f"""INSERT INTO {table_name} VALUES ('{test_id}', '{test_taker_id}', 
+                                                     {class_probs[0]}, {class_probs[1]}, {class_probs[2]},
+                                                     {class_probs[3]}, {class_probs[4]}, {class_probs[5]});""")  
+        return {'result':class_probs}
+    
+@app.route('/api/microexpression/analysis', methods=['POST'])
+def get_microexpression_analysis():
+    if request.method == 'POST':
+        table_name = 'Sentiment_Scores'
+        try: 
+            test_id = request.get_json()['test_id']
+            test_taker_id = request.get_json()['test_taker_id']
+            frames = request.get_json()['frames']
+            obj_id = request.get_json()['obj_id']
+        except: 
+             return {'error_message':'unclear or incomplete payload information in the request json'}
+        
+        # Delete previous record if present
+        delete(f"""DELETE FROM {table_name} WHERE test_id='{test_id}' AND test_taker_id='{test_taker_id}';""") # delete previous record
+        
+        class_probs = [0, 0, 0, 0, 0, 0]
+        for frame in frames:
+            frame = decode_image(frame)
+            processed_binary = preprocess_image(frame)
+            for idx, sentiment in enumerate(model.predict(processed_binary)[0]):
+                class_probs[idx] += float(sentiment)
+
+        # Add new record
+        insert(f"""INSERT INTO {table_name} VALUES ('{test_id}', '{test_taker_id}', '{obj_id}', 
+                                                     {class_probs[0]}, {class_probs[1]}, {class_probs[2]},
+                                                     {class_probs[3]}, {class_probs[4]}, {class_probs[5]});""")  
+        return {'result':class_probs}                                
+     
 
 # Submitting video clip frames for eyetracking
 @app.route('/api/eyetrack/reference', methods=['POST'])
@@ -44,7 +88,7 @@ def get_eyetrack_ref():
                  to trigger another request. 
     """ 
     if request.method == 'POST':
-        table_name = 'Test_taker_information'
+        table_name = 'Pupil_ReferencePoints'
         try:
             frames = request.get_json()['frames'] #base64 encoded frames
             test_id = request.get_json()['test_id']
@@ -105,7 +149,7 @@ def get_eyetrack_ab():
     Returns = StateResponse
     """
     if request.method == 'POST':
-        table_name = 'Test_taker_information'
+        table_name = 'Pupil_ReferencePoints'
         try:
             frames = request.get_json()['frames'] # base64 encoded frames
             test_id = request.get_json()['test_id']
@@ -126,11 +170,14 @@ def get_eyetrack_ab():
             OOI_analysis_result = deduce_object_of_interest(pixel_trajectory_x, pixel_trajectory_y, boundingbox)
       
             # Save analysis results to DB
-            insert(f"""INSERT INTO Individual_TrajectoryResult 
+            target_table = 'TrajectoryResult'
+            insert(f"""INSERT INTO {target_table} 
                    VALUES ('{test_id}', '{test_taker_id}', '[{', '.join(map(str, pixel_trajectory_x))}]', '[{', '.join(map(str, pixel_trajectory_y))}]');""")
-            insert(f"""INSERT INTO Individual_OOIResult 
-                       VALUES ('{test_id}', '{test_taker_id}', {OOI_analysis_result['object1']}, {OOI_analysis_result['object2']});""") # save OOI analysis result 
-    
+            
+            target_table = 'OOIResult'
+            for obj_id in boundingbox:
+                insert(f"""INSERT INTO {target_table} 
+                           VALUES ('{test_id}', '{test_taker_id}', '{obj_id}', {OOI_analysis_result[obj_id]})""") # save OOI analysis result    
             return {'success':True, 'result':OOI_analysis_result}
         except:
             return {'success':False, 'result':0}
@@ -147,14 +194,13 @@ def get_heatmap():
         except:
             return {'error_message':'unclear or incomplete payload information in the request json'}
         
-        table_name = 'Individual_TrajectoryResult'
+        table_name = 'TrajectoryResult'
         try:
             pixel_movements_x, pixel_movements_y = read(f"""SELECT x_trajectory, y_trajectory
                                                             FROM {table_name} 
                                                             WHERE test_id='{test_id}' AND test_taker_id='{test_taker_id}';""")[0]
             pixel_movements_x = json.loads(pixel_movements_x)
             pixel_movements_y = json.loads(pixel_movements_y)
-            print(pixel_movements_x[:10])
         except:
             return {'error_message':'Unable to retrieve the user gaze trajectory for given test set.'}                                           
 
@@ -167,9 +213,9 @@ def get_heatmap():
             x, y = int(pixel_movements_x[idx]), int(pixel_movements_y[idx])
             if idx > 0:
                 prev_x, prev_y = int(pixel_movements_x[idx-1]), int(pixel_movements_y[idx-1]) 
-                num_points = int(np.hypot(x - prev_x, y - prev_y)) // 4 # Number of points to interpolate based on the Euclidean distance between the points
-                x_values = np.linspace(prev_x, x, num_points, endpoint=True)
-                y_values = np.linspace(prev_y, y, num_points, endpoint=True)
+                num_points = np.hypot(x - prev_x, y - prev_y) // 4 # Number of points to interpolate based on the Euclidean distance between the points
+                x_values = np.linspace(prev_x, x, int(num_points), endpoint=True)
+                y_values = np.linspace(prev_y, y, int(num_points), endpoint=True)
                 for px, py in zip(x_values, y_values):
                     if addNoise:
                         npx = addWhiteNoise(px, mean=3, std_dev=2)
@@ -194,12 +240,43 @@ def get_heatmap():
         return {'result_image':base64.b64encode(cv2.imencode('.jpg', super_imposed_img)[1]).decode()}
 
 
-            
-
 @app.route('/api/dashboard/visualize/trajectory', methods=['POST'])
 def get_trajectory():
-    pass
+    if request.method == 'POST':
+        try:
+            test_id = request.get_json()['test_id']
+            test_taker_id = request.get_json()['test_taker_id']
+            screen = request.get_json()['screen']
+            
+        except:
+            return {'error_message':'unclear or incomplete payload information in the request json'}
+        
+        table_name = 'TrajectoryResult'
+        try:
+            pixel_movements_x, pixel_movements_y = read(f"""SELECT x_trajectory, y_trajectory
+                                                            FROM {table_name} 
+                                                            WHERE test_id='{test_id}' AND test_taker_id='{test_taker_id}';""")[0]
+            pixel_movements_x = json.loads(pixel_movements_x)
+            pixel_movements_y = json.loads(pixel_movements_y)
+        except:
+            return {'error_message':'Unable to retrieve the user gaze trajectory for given test set.'}       
+        
+        screen = decode_image(screen)
+        trajectory = []
+        frames = []
+        for idx in range(len(pixel_movements_x)):
+            x, y = int(pixel_movements_x[idx]), int(pixel_movements_y[idx])
+            trajectory.append((x, y)) # add it to trajectory
+            screen = cv2.circle(screen, (int(x), int(y)), radius=5, color=(20, 255, 20), thickness=-1) 
+            if len(trajectory) > 1:
+                for j in range(1, len(trajectory)):
+                    color = max(0, 255 - j * 10)  
+                    screen = cv2.line(screen, trajectory[j - 1], trajectory[j], (0, 0, color), thickness=1)
+            frames.append(base64.b64encode(cv2.imencode('.jpg', screen)[1]).decode()) 
+        return {'frames':frames}
+    
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=105) 
+    app.run(host='0.0.0.0', port=105)
+     
     
