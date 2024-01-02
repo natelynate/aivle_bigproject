@@ -21,7 +21,7 @@ model = tf.keras.models.load_model(model_dir)
 def state():
     if request.method == 'GET':
         try:
-            data = read("""SELECT * FROM TrajectoryResult;""")[0]
+            data = read("""select * from Pupil_ReferencePoints;""")[0]
             return {'state':data}
         except:
             return {'state':'unable to connect to DB'}
@@ -176,6 +176,9 @@ def get_eyetrack_ab():
                               FROM {table_name}
                               WHERE test_id='{test_id}' AND test_taker_id='{test_taker_id}';""")[0]
             pixel_trajectory_x, pixel_trajectory_y = process_pupil_movements(pupil_movements, center, displacement_ratios) # translate pupil coordinates to pixels
+            print(pixel_trajectory_x[:10])
+            print(pixel_trajectory_y[:10])
+            
             OOI_analysis_result = deduce_object_of_interest(pixel_trajectory_x, pixel_trajectory_y, boundingbox)
       
             # Save analysis results to DB

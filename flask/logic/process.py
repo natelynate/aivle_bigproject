@@ -94,19 +94,13 @@ def addWhiteNoise(p, mean=20, std_dev=5):
 
 def process_pupil_movements(pupil_movement, center_ref, displacement_ratio, addNoise=True):
     """Convert pupil displacements into corresponding pixel coordinates"""   
-    def findScaleFactor(pixel_coords):
-        """Description Text"""
-        minX, minY, maxX, maxY = 1e99, 1e99, -1e99, -1e99
-                
-        for coord in pixel_coords:
-            x, y = coord
-            minX = min(x, minX)
-            minY = min(y, minY)
-            maxX = max(x, maxX)
-            maxY = max(y, maxY)
-        print(minX, minY, "//", maxX, maxY)
-        x_scale_factor, y_scale_factor = abs(maxX - minX) / 1920, abs(maxY - minY) / 1080
-        return x_scale_factor, y_scale_factor
+    def findScaleFactor(x, y):
+        min_x, min_y, max_x, max_y = 1e99, 1e99, -1e99, -1e99
+        for coord in pupil_movement:
+            pixel_x, pixel_y = coord
+            min_x, min_y = min(pixel_x, min_x), min(pixel_y, min_y)
+            max_x, max_y = max(pixel_x, max_x), max(pixel_y, max_y)
+        return min_x, min_y, max_x, max_y
     
     def findQuadrant(x, y):
         center_x, center_y = center_ref
@@ -141,34 +135,30 @@ def process_pupil_movements(pupil_movement, center_ref, displacement_ratio, addN
         # Convert pupil displacements into pixelwise displacement
         pixel_displacement_x = horizontal_displacement * horizontal_ratio
         pixel_displacement_y = vertical_displacement  * vertical_ratio
-
         new_x, new_y = center_x + pixel_displacement_x, center_y + pixel_displacement_y
-        
-        # Add white noise if addNoise is set to True(default:True)
-        if addNoise:
-            new_x_with_noise = addWhiteNoise(new_x)
-            new_y_with_noise = addWhiteNoise(new_y)
-            
-        return int(new_x_with_noise), int(new_y_with_noise)
+        return int(new_x), int(new_y)
     
+
     pixel_movements_x, pixel_movements_y = [], []
+    min_x, min_y, max_x, max_y = findScaleFactor(pupil_movement)
+    
     for coord in pupil_movement:
         x, y = coord[1][0], coord[1][1]
-        pixel_x, pixel_y = convert2pixel(x, y)
-        
+        pixel_x, pixel_y = convert2pixel(x, y) # translate to pixel
+        pixel_x = ((pixel_x-min_x)/(max_x-min_x)) * 1920  # resizing
+        pixel_y = ((pixel_y-min_y)/(max_y-min_y)) * 1080
+        if addNoise: # Add white noise if addNoise is set to True(default:True)
+            pixel_x = addWhiteNoise(pixel_x)
+            pixel_y = addWhiteNoise(pixel_y) 
+        # Deal with out-of-bound pixels
         if pixel_x > 1920:
-            pixel_x = 1800
-            pixel_x = addWhiteNoise(pixel_x)
+            pixel_x = addWhiteNoise(1800)
         if pixel_x < 0:
-            pixel_x = 50
-            pixel_x = addWhiteNoise(pixel_x)
-        
+            pixel_x = addWhiteNoise(50)
         if pixel_y > 1020:
-            pixel_y = 900
-            pixel_y = addWhiteNoise(pixel_y)
+            pixel_y = addWhiteNoise(900)
         if pixel_y < 0:
-            pixel_y = 50
-            pixel_y = addWhiteNoise(pixel_y)
+            pixel_y = addWhiteNoise(50)
         pixel_movements_x.append(int(pixel_x))
         pixel_movements_y.append(int(pixel_y))  
     return pixel_movements_x, pixel_movements_y
