@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fullscreen Animation</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden; /* 전체 화면으로 설정될 때 스크롤 막기 */
+        }
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="myCanvas"></canvas>
+    <button id="startButton">애니메이션 시작</button>
+    <script>
+        const canvas = document.getElementById("myCanvas");
+        const ctx = canvas.getContext("2d");
+        const animationDuration = 5000; // 5초 동안의 애니메이션
+        let animationStartTime;
+        let isAnimating = false;
+
+        function startAnimation() {
+            if (!isAnimating) {
+                if (document.documentElement.requestFullscreen) {
+                    // WebKit 기반 브라우저 (Chrome, Safari)에서 사용하는 Fullscreen API
+                    console.log('chrome');
+                    document.documentElement.webkitRequestFullscreen().then(() => {
+                        isAnimating = true;
+                        animationStartTime = performance.now();
+                        requestAnimationFrame(animate);
+                    }).catch((error) => {
+                        console.error("전체 화면 전환 실패:", error);
+                    });
+                    // console.log('standard');
+                    // // 표준 Fullscreen API 사용
+                    // document.documentElement.requestFullscreen().then(() => {
+                    //     isAnimating = true;
+                    //     animationStartTime = performance.now();
+                    //     requestAnimationFrame(animate);
+                    // }).catch((error) => {
+                    //     console.error("전체 화면 전환 실패:", error);
+                    // });
+                //} else if (document.documentElement.mozRequestFullScreen) {
+                //    // Firefox에서 사용하는 Fullscreen API
+                //    document.documentElement.mozRequestFullScreen();
+                //    isAnimating = true;
+                //    animationStartTime = performance.now();
+                //    requestAnimationFrame(animate);
+                //} 
+                }
+            }
+        }
+
+        function handleResize() {
+            if (isAnimating) {
+                document.exitFullscreen();
+                isAnimating = false;
+            }
+        }
+
+        function animate(timestamp) {
+            const elapsed = timestamp - animationStartTime;
+
+            if (elapsed < animationDuration) {
+                const x = (canvas.width / 2) + (canvas.width / 2) * Math.sin((elapsed / animationDuration) * (2 * Math.PI));
+                const y = canvas.height / 2;
+
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = "red";
+                ctx.beginPath();
+                ctx.arc(x, y, 20, 0, 2 * Math.PI);
+                ctx.fill();
+
+                requestAnimationFrame(animate);
+            } else {
+                document.exitFullscreen();
+                isAnimating = false;
+            }
+        }
+
+        const startButton = document.getElementById("startButton");
+        startButton.addEventListener("click", startAnimation);
+
+        window.addEventListener("resize", handleResize);
+    </script>
+</body>
+</html>

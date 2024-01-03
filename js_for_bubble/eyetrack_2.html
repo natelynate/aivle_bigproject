@@ -8,13 +8,27 @@
         canvas {
             border: 1px solid #000;
         }
+        #messageBox {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: white;
+            padding: 10px;
+            border: 1px solid #000;
+        }
     </style>
 </head>
 <body>
     <canvas id="myCanvas"></canvas>
     <button id="restartButton">다시하기</button>
+    <div id="messageBox">지금 깜박이는 곳을 계속 바라보세요</div>
     <script type="text/javascript" src="reddots.js"></script>
     <script>
+        // 전역 변수로 캔버스 크기 저장
+        let canvasWidth, canvasHeight;
+
         document.addEventListener("DOMContentLoaded", function() {
             const canvas = document.getElementById("myCanvas");
             const ctx = canvas.getContext("2d");
@@ -22,11 +36,25 @@
             let isRed = true;
             let lastTimestamp;
             let animationStartTime;
+            let showMessage = false;
+            const messageBox = document.getElementById("messageBox");
 
             function resizeCanvas() {
                 // 캔버스의 너비와 높이를 현재 화면 크기에 맞게 설정
-                canvas.width = window.innerWidth;
-                canvas.height = window.innerHeight;
+                canvas.width = canvasWidth = window.innerWidth;
+                canvas.height = canvasHeight = window.innerHeight;
+            }
+
+            function showMessageBox() {
+                // 메시지 박스를 보이도록 설정
+                showMessage = true;
+                messageBox.style.display = "block";
+            }
+
+            function hideMessageBox() {
+                // 메시지 박스를 숨기도록 설정
+                showMessage = false;
+                messageBox.style.display = "none";
             }
 
             function blinkDot(timestamp) {
@@ -55,15 +83,35 @@
                         } else if (timestamp - animationStartTime <= 10000) {
                             centerX = 20;
                             centerY = 20;
+                            if (elapsedSeconds <= 1) {
+                                showMessageBox();
+                            } else {
+                                hideMessageBox();
+                            }
                         } else if (timestamp - animationStartTime <= 15000) {
                             centerX = canvas.width - 20;
                             centerY = 20;
+                            if (elapsedSeconds <= 1) {
+                                showMessageBox();
+                            } else {
+                                hideMessageBox();
+                            }
                         } else if (timestamp - animationStartTime <= 20000) {
                             centerX = 20;
                             centerY = canvas.height - 20;
+                            if (elapsedSeconds <= 1) {
+                                showMessageBox();
+                            } else {
+                                hideMessageBox();
+                            }
                         } else {
                             centerX = canvas.width - 20;
                             centerY = canvas.height - 20;
+                            if (elapsedSeconds <= 1) {
+                                showMessageBox();
+                            } else {
+                                hideMessageBox();
+                            }
                         }
 
                         if (isRed) {
@@ -92,6 +140,7 @@
                 // 초기화
                 lastTimestamp = null;
                 animationStartTime = null;
+                hideMessageBox(); // 다시 시작할 때 메시지 숨기기
                 // 깜박임 다시 시작
                 requestAnimationFrame(blinkDot);
             }

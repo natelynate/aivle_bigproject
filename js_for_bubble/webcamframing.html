@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>웹캠 GIF 촬영</title>
+</head>
+<body>
+    <video id="webcam" width="640" height="480" autoplay></video>
+    <button id="captureButton">촬영</button>
+    <canvas id="canvas" style="display: none;"></canvas>
+    <script>
+        document.addEventListener('DOMContentLoaded', (event) => {
+            const webcam = document.getElementById('webcam');
+            const captureButton = document.getElementById('captureButton');
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+
+            let isWebcamAvailable = false;
+
+            // 웹캠 지원 확인
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then((stream) => {
+                    webcam.srcObject = stream;
+                    isWebcamAvailable = true;
+                })
+                .catch((error) => {
+                    console.error('웹캠을 사용할 수 없습니다.', error);
+                    alert('ERROR: 웹캠을 사용할 수 없습니다.');
+                });
+
+            // 촬영 버튼 클릭 이벤트 핸들러
+            captureButton.addEventListener('click', () => {
+                if (isWebcamAvailable) {
+                    captureImage();
+                } else {
+                    alert('웹캠을 사용할 수 없습니다.');
+                }
+            });
+
+            // 이미지 촬영 함수
+            function captureImage() {
+                canvas.width = webcam.videoWidth;
+                canvas.height = webcam.videoHeight;
+                ctx.drawImage(webcam, 0, 0, canvas.width, canvas.height);
+
+                // GIF로 변환
+                const gif = new GIF({
+                    workers: 2,
+                    quality: 10,
+                    width: canvas.width,
+                    height: canvas.height,
+                });
+
+                gif.addFrame(canvas, { copy: true, delay: 1000 });
+
+                // 여러 프레임을 추가하려면 반복문을 사용하여 gif.addFrame을 호출하십시오.
+
+                gif.on('finished', function (blob) {
+                    // blob을 사용하여 필요한 동작 수행 (예: 파일 다운로드)
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'webcam_capture.gif';
+                    a.click();
+                    URL.revokeObjectURL(url);
+                });
+
+                gif.render();
+            }
+        });
+    </script>
+</body>
+</html>
