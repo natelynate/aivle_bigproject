@@ -1,8 +1,8 @@
-<!-- 여기서 웹캠을 촬영하여 생성되는 webm 파일을 aws 서버의 webm 폴더로 보내는 코드. -->
-<!-- 그 이후 프레임 추출 작업은 서버 상에서 python 코드로 하기로 한다. -->
+<!-- 프레임 추출을 해보려 했으나 실패
+이유는 모르겠지만 카메라 작동 자체가 안됨
+webcamframing.html 사용하시오 -->
 
 
-<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -32,7 +32,13 @@
       <button id="extract-frames-btn">프레임 추출</button>
     </div>
 
+    <!-- 프레임을 표시할 컨테이너 엘리먼트 추가 -->
+    <div class="section" id="frames-container"></div>
+
     <script>
+      // createFFmpeg 함수 정의
+      const createFFmpeg = FFmpeg.createFFmpeg;
+
       const videoOutput = document.getElementById('video-output');
       const startBtn = document.getElementById('start-btn');
       const downloadBtn = document.getElementById('download-btn');
@@ -109,10 +115,10 @@
           await ffmpeg.load();
 
           const inputFileName = 'input.webm';
-          const outputFileName = 'frame%d.png'; // %d는 프레임 인덱스를 나타냅니다.
+          const outputFileName = 'frame%d.png';
 
           ffmpeg.FS('writeFile', inputFileName, await fetchBlob(recordedMediaURL));
-          await ffmpeg.run('-i', inputFileName, '-vf', `fps=24`, outputFileName);
+          await ffmpeg.run('-i', inputFileName, '-vf', 'fps=24', outputFileName);
 
           const files = ffmpeg.FS('readdir', '/');
           const frameFiles = files.filter(file => file.includes('frame'));

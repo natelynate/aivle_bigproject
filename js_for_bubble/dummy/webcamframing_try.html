@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <title>Static Template</title>
+    <style>
+      video {
+        width: 400px;
+        height: 230px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="section">
+      <video id="video-output"></video>
+      <br />
+      <button id="start-btn">녹화 시작</button>
+      <button id="finish-btn">녹화 종료</button>
+    </div>
+    <div class="section">
+      <video id="recorded-video" controls></video>
+      <br />
+      <button id="download-btn">다운로드</button>
+    </div>
+
+    <script>
+      const videoOutput = document.getElementById('video-output');
+      const startBtn = document.getElementById('start-btn');
+      const downloadBtn = document.getElementById('download-btn');
+      const finishBtn = document.getElementById('finish-btn');
+      const recordedVideo = document.getElementById('recorded-video');
+
+      let mediaStream = null;
+      let mediaRecorder = null;
+      let recordedMediaURL = null;
+
+      // 유저의 카메라로 부터 입력을 사용할 수 있도록 요청
+      navigator.mediaDevices.getUserMedia({ video: true })
+        .then(function (newMediaStream) {
+          mediaStream = newMediaStream;
+
+          // 카메라의 입력을 실시간으로 비디오 태그에서 확인
+          videoOutput.srcObject = mediaStream;
+          videoOutput.onloadedmetadata = function (e) {
+            videoOutput.play();
+          };
+        });
+
+      // 녹화 시작 버튼 클릭 시 빌생하는 이벤트 핸들러 등록
+      startBtn.addEventListener('click', function () {
+        let recordedChunks = [];
+        // 1.MediaStream을 매개변수로 MediaRecorder 생성자를 호출
+        mediaRecorder = new MediaRecorder(mediaStream, {
+          mimeType: 'video/webm; codecs=vp9',
+        });
+
+        // 2. 전달받는 데이터를 처리하는 이벤트 핸들러 등록
+        mediaRecorder.ondataavailable = function (event) {
+          if (event.data && event.data.size > 0) {
+            console.log('ondataavailable');
+            recordedChunks.push(event.data);
+          }
+        };
+
+        // 3. 녹화 중지 이벤트 핸들러 등록
+        mediaRecorder.onstop = function () {
+          // 메모리 누수 방지를 createObjectURL로 생성한 url을 사용하지 않으면 revokeObjectURL 함수로 지워줘야합니다.
+          if (recordedMediaURL) {
+            URL.revokeObjectURL(recordedMediaURL);
+          }
+
+          const blob = new Blob(recordedChunks, { type: 'video/webm;' });
+          recordedMediaURL = URL.createObjectURL(blob);
+          recordedVideo.src = recordedMediaURL;
+        };
+
+        mediaRecorder.start();
+      });
+
+      // 녹화 종료 버튼 클릭 시 빌생하는 이벤트 핸들러 등록
+      finishBtn.addEventListener('click', function () {
+        if (mediaRecorder) {
+          // 5. 녹화 중지
+          mediaRecorder.stop();
+        }
+      });
+
+      // 다운로드 버튼 클릭 시 발생하는 이벤트 핸들러 등록
+      downloadBtn.addEventListener('click', function () {
+        if (recordedMediaURL) {
+          const link = document.createElement('a');
+          document.body.appendChild(link);
+
+          // 현재 날짜 및 시간을 포맷팅하여 파일명에 추가
+          const currentDateTime = new Date()
+            .toISOString()
+            .replace(/[-T:.Z]/g, ''); // 포맷팅
+
+          link.href = recordedMediaURL;
+          link.download = `video_${currentDateTime}.webm`;
+          link.click();
+
+          document.body.removeChild(link);
+        }
+      });
+    </script>
+  </body>
+</html>
+
+
+
+
+
+
+
+<!-- ㅇ 왜 안될까... -->
+
+<!-- <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>웹캠 GIF 촬영</title>
+</head>
+<body>
+    <video id="webcam" width="640" height="480" autoplay></video>
+    <button id="captureButton">촬영</button>
+    <canvas id="canvas" style="display: none;"></canvas>
+    <script>
+        document.addEventListener('DOMContentLoaded', (event) => {
+            const webcam = document.getElementById('webcam');
+            const captureButton = document.getElementById('captureButton');
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+
+            let isWebcamAvailable = false;
+
+            // 웹캠 지원 확인
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then((stream) => {
+                    webcam.srcObject = stream;
+                    isWebcamAvailable = true;
+                })
+                .catch((error) => {
+                    console.error('웹캠을 사용할 수 없습니다.', error);
+                    alert('ERROR: 웹캠을 사용할 수 없습니다.');
+                });
+
+            // 촬영 버튼 클릭 이벤트 핸들러
+            captureButton.addEventListener('click', () => {
+                if (isWebcamAvailable) {
+                    captureImage();
+                } else {
+                    alert('웹캠을 사용할 수 없습니다.');
+                }
+            });
+
+            // 이미지 촬영 함수
+            function captureImage() {
+                canvas.width = webcam.videoWidth;
+                canvas.height = webcam.videoHeight;
+                ctx.drawImage(webcam, 0, 0, canvas.width, canvas.height);
+
+                // GIF로 변환
+                const gif = new GIF({
+                    workers: 2,
+                    quality: 10,
+                    width: canvas.width,
+                    height: canvas.height,
+                });
+
+                gif.addFrame(canvas, { copy: true, delay: 1000 });
+
+                // 여러 프레임을 추가하려면 반복문을 사용하여 gif.addFrame을 호출하십시오.
+
+                gif.on('finished', function (blob) {
+                    // blob을 사용하여 필요한 동작 수행 (예: 파일 다운로드)
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'webcam_capture.gif';
+                    a.click();
+                    URL.revokeObjectURL(url);
+                });
+
+                gif.render();
+            }
+        });
+    </script>
+</body>
+</html> -->
