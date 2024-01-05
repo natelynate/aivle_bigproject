@@ -40,8 +40,7 @@
         #restartButton {
             position: absolute;
             bottom: 20px; /* 하단 중앙에 위치하도록 설정 */
-            left: 50%;
-            transform: translateX(-50%);
+            right: 20px;
             padding: 10px;
             cursor: pointer;
         }
@@ -100,13 +99,14 @@
             }
 
             function blinkDot(timestamp) {
-                blink_interval_sec = 0.4;
+                let blink_interval_sec = 0.3;
+                let cycle_msec = 4000;
 
                 if (!animationStartTime) {
                     animationStartTime = timestamp;
                 }
 
-                if (timestamp - animationStartTime <= 30000) {
+                if (timestamp - animationStartTime <= cycle_msec*5) {
                     if (!lastTimestamp) {
                         lastTimestamp = timestamp;
                     }
@@ -119,46 +119,47 @@
                         // console.log(canvas.width, canvas.height);
 
                         // let으로 선언한 변수는 외부 api 이용시 호출하여 이용할 수 있다.
-                        let center = [canvas.width / 2, canvas.height / 2];
-                        let top_left = [20, 20];
-                        let top_right = [canvas.width-20, 20];
-                        let bottom_left = [20, canvas.height-20];
-                        let bottom_right = [canvas.width-20, canvas.height-20];
+                        let midX = canvas.width / 2;
+                        let midY = canvas.height / 2;
+                        let widthMargin = 20;
+                        let heightMargin = 15;
+                        let dummy_msec = 1000;  // 시선 이동 시간을 고려하여 깜박임 시작 직후부터 버리는 시간
                         
                         var cur = timestamp - animationStartTime;
                         var posX, posY;
 
-                        if (cur <= 6000) {
-                            posX = center[0];
-                            posY = center[1];
-                        } else if (cur <= 12000) {
-                            posX = top_left[0];
-                            posY = top_left[1];
-                        } else if (cur <= 18000) {
-                            posX = top_right[0];
-                            posY = top_right[1];
-                        } else if (cur <= 24000) {
-                            posX = bottom_left[0];
-                            posY = bottom_left[1];
+                        // 순서: 중앙, 상, 좌, 우, 하
+                        if (cur <= cycle_msec) {
+                            posX = midX;
+                            posY = midY;
+                        } else if (cur <= cycle_msec*2) {
+                            posX = midX;
+                            posY = heightMargin;
+                        } else if (cur <= cycle_msec*3) {
+                            posX = widthMargin;
+                            posY = midY;
+                        } else if (cur <= cycle_msec*4) {
+                            posX = canvas.width - widthMargin;
+                            posY = midY;
                         } else {
-                            posX = bottom_right[0];
-                            posY = bottom_right[1];
+                            posX = midX;
+                            posY = canvas.height - heightMargin;
                         }
                         // console.log(posX, posY);
                         
-                        if ((cur+1) % 6000 >= 2000) {
+                        if ((cur+1) % cycle_msec >= dummy_msec) {
                             hideMessageBox();
                         } else {
                             showMessageBox();                            
                         }
 
                         if (flag) {
-                            if ((cur+1) % 6000 >= 2000) {ctx.fillStyle = "red";}
+                            if ((cur+1) % cycle_msec >= dummy_msec) {ctx.fillStyle = "red";}
                             else {ctx.fillStyle = "black";}
                             ctx.strokeStyle = "black";
                         } else {
                             ctx.fillStyle = "white";
-                            if ((cur+1) % 6000 >= 2000) {ctx.strokeStyle = "red";}
+                            if ((cur+1) % cycle_msec >= dummy_msec) {ctx.strokeStyle = "red";}
                             else {ctx.strokeStyle = "black";}
                         }
 
