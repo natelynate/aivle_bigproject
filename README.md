@@ -4,12 +4,7 @@ KT AIVLESCHOOL 4기 AI트랙에서 2023 12월부터 ~ 2024년 1월까지 진행�
 ![MicrosoftTeams-image](https://github.com/natelynate/aivle_bigproject/assets/119924119/5be36631-7526-4fb3-860b-837baaa622dc)
 
 COLLABORATORS:
-NAME 	                         GITHUB	              ROLE  
-노영준	                     	   nohyoungjune	        Server Admin/Database/FrontEnd  
-김상목	                	       sangmok26            FrontEnd(Javascript)  
-윤기화	                  	     natelynate	          BackEnd / AI  
-이상우	                   	     kimchikingdom	      FrontEnd/UI&UX Design/AI  
-노유연	                         nomir200	            FrontEnd  
+![image](https://github.com/natelynate/aivle_bigproject/assets/119924119/dc584de6-e411-486e-94be-8c85c66f8b38)
 
 
 
