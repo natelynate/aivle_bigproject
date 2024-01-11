@@ -3,9 +3,9 @@ KT AIVLESCHOOL 4기 AI트랙에서 2023 12월부터 ~ 2024년 1월까지 진행�
 
 ![MicrosoftTeams-image](https://github.com/natelynate/aivle_bigproject/assets/119924119/5be36631-7526-4fb3-860b-837baaa622dc)
 
-COLLABORATORS:
-![image](https://github.com/natelynate/aivle_bigproject/assets/119924119/dc584de6-e411-486e-94be-8c85c66f8b38)
 
+
+![image](https://github.com/natelynate/aivle_bigproject/assets/119924119/2758f3f5-cc43-4624-ad5d-934bf30591d3)
 
 
 
