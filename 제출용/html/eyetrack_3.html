@@ -1,0 +1,205 @@
+<!-- 위치당 비측정 깜박임(검정, 다른 곳에서 시선 이동하는 데 걸리는 시간 고려) 2초와 측정 깜박임(빨강) 4초로 설정한 버전 -->
+<!-- 비측정 깜박임 동안에만 메시지창이 띄워지도록 변경 / 다시하기 버튼 오류 수정 완료 -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dot</title>
+    <style>
+        body {
+            overflow: hidden; /* 스크롤 비활성화 */
+            margin: 0; /* 페이지 전체의 마진을 0으로 설정 */
+        }
+
+        canvas {
+            border: 1px solid #000;
+        }
+
+        #messageBox {
+            display: none;
+            position: absolute;
+            top: 100px; /* 위쪽 중앙에 위치하도록 수정 */
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: white;
+            padding: 10px;
+            border: 1px solid #000;
+        }
+
+        /* #startButton {
+            position: absolute;
+            bottom: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 10px;
+            cursor: pointer;
+        } */
+
+        #restartButton {
+            position: absolute;
+            bottom: 20px; /* 하단 중앙에 위치하도록 설정 */
+            right: 20px;
+            padding: 10px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="myCanvas"></canvas>
+    <div id="messageBox">지금 깜박이는 위치에 시선을 고정하세요</div>
+    <button id="startButton" onclick="startAnimation()">시작하기</button>
+    <button id="restartButton" onclick="restartAnimation()">다시하기</button>
+    <script>
+        let animationRunning = false;
+
+        function startAnimation() {
+            if (!animationRunning) {
+                animationRunning = true;
+                requestAnimationFrame(blinkDot);
+                document.getElementById("startButton").style.display = "block";
+            }
+        }
+
+        function restartAnimation() {
+            lastTimestamp = null;
+            animationStartTime = null;
+            hideMessageBox();
+            animationRunning = false;
+            document.getElementById("startButton").style.display = "block";
+        }
+
+        document.addEventListener("DOMContentLoaded", function() {
+            const canvas = document.getElementById("myCanvas");
+            const ctx = canvas.getContext("2d");
+            const radius = 10;
+            let flag = true;
+            let lastTimestamp;
+            let animationStartTime;
+            let showMessage = false;
+            const messageBox = document.getElementById("messageBox");
+
+            function resizeCanvas() {
+                // 캔버스의 너비와 높이를 현재 화면 크기에 맞게 설정
+                canvas.width = canvasWidth = window.innerWidth;
+                canvas.height = canvasHeight = window.innerHeight;
+            }
+
+            function showMessageBox() {
+                // 메시지 박스를 보이도록 설정
+                showMessage = true;
+                messageBox.style.display = "block";
+            }
+
+            function hideMessageBox() {
+                // 메시지 박스를 숨기도록 설정
+                showMessage = false;
+                messageBox.style.display = "none";
+            }
+
+            function blinkDot(timestamp) {
+                let blink_interval_sec = 0.3;
+                let cycle_msec = 4000;
+
+                if (!animationStartTime) {
+                    animationStartTime = timestamp;
+                }
+
+                if (timestamp - animationStartTime <= cycle_msec*5) {
+                    if (!lastTimestamp) {
+                        lastTimestamp = timestamp;
+                    }
+
+                    const elapsedMilliseconds = timestamp - lastTimestamp;
+                    const elapsedSeconds = elapsedMilliseconds / 1000;
+
+                    if (elapsedSeconds >= blink_interval_sec) {
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+                        // console.log(canvas.width, canvas.height);
+
+                        // let으로 선언한 변수는 외부 api 이용시 호출하여 이용할 수 있다.
+                        let midX = canvas.width / 2;
+                        let midY = canvas.height / 2;
+                        let widthMargin = 20;
+                        let heightMargin = 15;
+                        let dummy_msec = 1000;  // 시선 이동 시간을 고려하여 깜박임 시작 직후부터 버리는 시간
+                        
+                        var cur = timestamp - animationStartTime;
+                        var posX, posY;
+
+                        // 순서: 중앙, 상, 좌, 우, 하
+                        if (cur <= cycle_msec) {
+                            posX = midX;
+                            posY = midY;
+                        } else if (cur <= cycle_msec*2) {
+                            posX = midX;
+                            posY = heightMargin;
+                        } else if (cur <= cycle_msec*3) {
+                            posX = widthMargin;
+                            posY = midY;
+                        } else if (cur <= cycle_msec*4) {
+                            posX = canvas.width - widthMargin;
+                            posY = midY;
+                        } else {
+                            posX = midX;
+                            posY = canvas.height - heightMargin;
+                        }
+                        // console.log(posX, posY);
+                        
+                        if ((cur+1) % cycle_msec >= dummy_msec) {
+                            hideMessageBox();
+                        } else {
+                            showMessageBox();                            
+                        }
+
+                        if (flag) {
+                            if ((cur+1) % cycle_msec >= dummy_msec) {ctx.fillStyle = "red";}
+                            else {ctx.fillStyle = "black";}
+                            ctx.strokeStyle = "black";
+                        } else {
+                            ctx.fillStyle = "white";
+                            if ((cur+1) % cycle_msec >= dummy_msec) {ctx.strokeStyle = "red";}
+                            else {ctx.strokeStyle = "black";}
+                        }
+
+                        ctx.beginPath();
+                        ctx.arc(posX, posY, radius, 0, 2 * Math.PI);
+                        ctx.fill();
+                        ctx.stroke();
+
+                        flag = !flag;
+
+                        lastTimestamp = timestamp;
+                    }
+
+                    requestAnimationFrame(blinkDot);
+                }
+            }
+
+            function restartAnimation() {
+                // 초기화
+                lastTimestamp = null;
+                animationStartTime = null;
+                hideMessageBox(); // 다시 시작할 때 메시지 숨기기
+                // 깜박임 다시 시작
+                requestAnimationFrame(blinkDot);
+            }
+
+            // 초기 호출
+            resizeCanvas(); // 페이지 로드 시 캔버스 크기 설정
+            requestAnimationFrame(blinkDot);
+
+            //const startButton = document.getElementById("startButton");
+            //startButton.addEventListener("click", restartAnimation)
+
+            // 다시하기 버튼에 이벤트 리스너 추가
+            const restartButton = document.getElementById("restartButton");
+            restartButton.addEventListener("click", restartAnimation);
+
+            // 창 크기가 변경될 때 캔버스 크기 다시 설정
+            window.addEventListener("resize", resizeCanvas);
+        });
+    </script>
+</body>
+</html>
